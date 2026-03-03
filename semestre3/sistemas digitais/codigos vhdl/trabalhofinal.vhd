@@ -1,0 +1,384 @@
+LIBRARY IEEE;
+USE IEEE.std_logic_1164.ALL;
+USE IEEE.numeric_std.ALL;
+
+ENTITY blackJack IS
+    PORT (
+        hit, stay, clk, start : IN STD_LOGIC;
+        random_sel : IN STD_LOGIC;
+        card_in : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
+        card_value: OUT STD_LOGIC_VECTOR (6 DOWNTO 0);
+        turn : OUT STD_LOGIC_VECTOR (6 DOWNTO 0);
+        jogada : OUT STD_LOGIC_VECTOR (6 DOWNTO 0); -- Jogada atual
+        sum1: OUT STD_LOGIC_VECTOR (6 DOWNTO 0); -- Primeiro dígito (dezena)
+        sum2: OUT STD_LOGIC_VECTOR (6 DOWNTO 0); -- Segundo dígito (unidade)
+        win, lose, tie : OUT STD_LOGIC
+    );
+END ENTITY;
+
+ARCHITECTURE BlackJack OF blackJack IS
+
+    COMPONENT cards IS
+        PORT (
+            clk             : IN STD_LOGIC;
+            start           : IN STD_LOGIC;
+            card_rec        : IN STD_LOGIC;
+            random_number   : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+        );
+    END COMPONENT;
+
+    TYPE Tipo_estado IS (
+        I, SP_rec, SP_wait, SP_recieve, SP_rec1, SP_wait1, SP_recieve1, S_decision,
+        SD_rec, SD_wait, SD_recieve, SD_rec1, SD_wait1, SD_recieve1, SD_result, 
+        S_win, S_lose, S_draw
+    );
+
+    SIGNAL state : Tipo_estado := I;
+    SIGNAL P_sum, D_sum : INTEGER RANGE 0 TO 31 := 0;
+    SIGNAL P_cont, D_cont : INTEGER RANGE 0 TO 10 := 0;
+    SIGNAL card_from_lfsr : STD_LOGIC_VECTOR(3 DOWNTO 0);
+    SIGNAL chosen_card : STD_LOGIC_VECTOR(3 DOWNTO 0);
+    SIGNAL rec_card : STD_LOGIC := '0';
+    SIGNAL card_val_display : STD_LOGIC_VECTOR(6 DOWNTO 0) := "0000000";
+
+    -- Função para converter número para display de 7 segmentos (ativo baixo)
+    FUNCTION to_7seg(num: INTEGER) RETURN STD_LOGIC_VECTOR IS
+    BEGIN
+        CASE num IS
+            WHEN 0 => RETURN "0111111";  -- 0
+            WHEN 1 => RETURN "0000110";  -- 1
+            WHEN 2 => RETURN "1011011";  -- 2
+            WHEN 3 => RETURN "1001111";  -- 3
+            WHEN 4 => RETURN "1100110";  -- 4
+            WHEN 5 => RETURN "1101101";  -- 5
+            WHEN 6 => RETURN "1111101";  -- 6
+            WHEN 7 => RETURN "0000111";  -- 7
+            WHEN 8 => RETURN "1111111";  -- 8
+            WHEN 9 => RETURN "1100111";  -- 9
+            WHEN 10 => RETURN "1110111"; -- A (10)
+            WHEN 11 => RETURN "1111100"; -- b (11)
+            WHEN 12 => RETURN "0111001"; -- C (12)
+            WHEN 13 => RETURN "1011110"; -- d (13)
+            WHEN 14 => RETURN "1111001"; -- E (14)
+            WHEN 15 => RETURN "1110001"; -- F (15)
+            WHEN 16 => RETURN "1110011"; -- P (Player)
+            WHEN 17 => RETURN "1011110"; -- d (Dealer)
+            WHEN 18 => RETURN "1001111"; -- W (Win)
+            WHEN 19 => RETURN "0111000"; -- L (Lose)
+            WHEN 20 => RETURN "0111111"; -- 0 (Tie)
+            WHEN OTHERS => RETURN "0000000";
+        END CASE;
+    END FUNCTION;
+
+    -- Funções para obter dígitos
+    FUNCTION get_first_digit(num: INTEGER) RETURN INTEGER IS
+    BEGIN
+        IF num < 10 THEN
+            RETURN 0;
+        ELSE
+            RETURN num / 10;
+        END IF;
+    END FUNCTION;
+
+    FUNCTION get_second_digit(num: INTEGER) RETURN INTEGER IS
+    BEGIN
+        RETURN num MOD 10;
+    END FUNCTION;
+
+BEGIN
+
+    card_gen: cards
+    PORT MAP (
+        clk => clk,
+        start => start,
+        card_rec => rec_card,
+        random_number => card_from_lfsr
+    );
+
+    -- Seleciona entre carta aleatória ou manual
+    chosen_card <= card_from_lfsr WHEN random_sel = '1' ELSE card_in;
+    
+    
+    card_value <= card_val_display;
+    
+    -- Máquina de estados principal
+    PROCESS(start, clk)
+    BEGIN
+        IF start = '1' THEN
+            state <= I;
+        ELSIF rising_edge(clk) THEN
+            CASE state IS
+                WHEN I => 
+                    IF start = '0' THEN 
+                        state <= SP_rec; 
+                    END IF;
+                    
+                WHEN SP_rec       => state <= SP_wait;
+                WHEN SP_wait      => state <= SP_recieve;
+                WHEN SP_recieve   => state <= SP_rec1;
+                WHEN SP_rec1      => state <= SP_wait1;
+                WHEN SP_wait1     => state <= SP_recieve1;
+                WHEN SP_recieve1  => state <= S_decision;
+
+                WHEN S_decision =>
+                    IF P_sum = 21 AND P_cont = 2 THEN
+                        state <= S_win;
+                    ELSIF P_sum > 21 THEN
+                        state <= S_lose;
+                    ELSIF hit = '1' THEN
+                        state <= SP_rec1;
+                    ELSIF stay = '1' THEN
+                        state <= SD_rec;
+                    ELSE
+                        state <= S_decision;
+                    END IF;
+
+                WHEN SD_rec       => state <= SD_wait;
+                WHEN SD_wait      => state <= SD_recieve;
+                WHEN SD_recieve   => state <= SD_rec1;
+                WHEN SD_rec1      => state <= SD_wait1;
+                WHEN SD_wait1     => state <= SD_recieve1;
+                WHEN SD_recieve1  => state <= SD_result;
+
+                WHEN SD_result =>
+                    IF D_sum = 21 AND D_cont = 2 THEN
+                        state <= S_lose;
+                    ELSIF D_sum > 21 THEN
+                        state <= S_win;
+                    ELSIF D_sum <= 17 THEN
+                        state <= SD_rec1;
+                    ELSIF P_sum > D_sum THEN
+                        state <= S_win;
+                    ELSIF P_sum < D_sum THEN
+                        state <= S_lose;
+                    ELSE
+                        state <= S_draw;
+                    END IF;
+
+                WHEN S_win | S_lose | S_draw => 
+                    IF start = '1' THEN 
+                        state <= I; 
+                    END IF;
+                    
+                WHEN OTHERS => state <= I;
+            END CASE;
+        END IF;
+    END PROCESS;
+
+    PROCESS(state)
+        VARIABLE card_val : INTEGER;
+        VARIABLE jogada_n : INTEGER;
+        VARIABLE P_sum_digit1, P_sum_digit2 : INTEGER;
+        VARIABLE D_sum_digit1, D_sum_digit2 : INTEGER;
+        VARIABLE P_ace, D_ace : BOOLEAN;
+    BEGIN
+        card_val := to_integer(unsigned(chosen_card));
+
+        IF(card_val >= 10 AND random_sel = '1') THEN
+            card_val := 10;
+        END IF;
+        
+        win <= '0';
+        lose <= '0';
+        tie <= '0';
+        
+        P_sum_digit1 := get_first_digit(P_sum);
+        P_sum_digit2 := get_second_digit(P_sum);
+        D_sum_digit1 := get_first_digit(D_sum);
+        D_sum_digit2 := get_second_digit(D_sum);
+        jogada_n := P_cont + D_cont;
+        
+        CASE state IS
+            WHEN I =>
+                turn <= to_7seg(16);
+                jogada <= "0000000";
+                sum1 <= "0000000";
+                sum2 <= "0000000";
+                card_val_display <= "0000000";
+                P_sum <= 0;
+                D_sum <= 0;
+                P_cont <= 0;
+                D_cont <= 0;
+
+            -- Estados do jogador
+            WHEN SP_rec =>
+                turn <= to_7seg(16);  -- 'P' (Player)
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(P_sum_digit1);
+                sum2 <= to_7seg(P_sum_digit2);
+                rec_card <= '1';
+                
+            WHEN SP_wait =>
+                rec_card <= '0';
+                P_cont <= P_cont + 1;
+                
+            WHEN SP_recieve =>
+                turn <= to_7seg(16);
+                jogada <= to_7seg(jogada_n);
+                card_val_display <= to_7seg(card_val);
+                IF(card_val = 1) THEN
+                    P_ace := TRUE;
+                    card_val := 11;
+                    card_val_display <= to_7seg(card_val);
+                END IF;
+                P_sum <= P_sum + card_val;
+                sum1 <= to_7seg(get_first_digit(P_sum + card_val));
+                sum2 <= to_7seg(get_second_digit(P_sum + card_val));
+                
+            WHEN SP_rec1 =>
+                turn <= to_7seg(16);
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(P_sum_digit1);
+                sum2 <= to_7seg(P_sum_digit2);
+                rec_card <= '1';
+                
+            WHEN SP_wait1 =>
+                rec_card <= '0';
+                P_cont <= P_cont + 1;
+                
+            WHEN SP_recieve1 =>
+                turn <= to_7seg(16);
+                jogada <= to_7seg(jogada_n);
+                card_val_display <= to_7seg(card_val);
+                IF card_val = 1 THEN
+                    card_val := 11;
+                    P_ace := TRUE;
+                END IF;
+
+                P_sum <= P_sum + card_val;
+
+                IF (P_sum + card_val) > 21 AND P_ace THEN
+                    P_sum <= (P_sum + card_val) - 10;
+                    P_ace := FALSE;
+                END IF;
+                
+                sum1 <= to_7seg(get_first_digit(P_sum + card_val));
+                sum2 <= to_7seg(get_second_digit(P_sum + card_val));
+                
+            WHEN S_decision =>
+                turn <= to_7seg(16);
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(P_sum_digit1);
+                sum2 <= to_7seg(P_sum_digit2);
+
+            -- Estados do dealer
+            WHEN SD_rec =>
+                card_val_display <= "0000000";
+                turn <= to_7seg(17);  -- 'd' (Dealer)
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(D_sum_digit1);
+                sum2 <= to_7seg(D_sum_digit2);
+                rec_card <= '1';
+                
+            WHEN SD_wait =>
+                rec_card <= '0';
+                D_cont <= D_cont + 1;
+                
+            WHEN SD_recieve =>
+                turn <= to_7seg(17);
+                jogada <= to_7seg(jogada_n);
+                card_val_display <= to_7seg(card_val);
+                IF(card_val = 1) THEN
+                    D_ace := TRUE;
+                    card_val := 11;
+                    card_val_display <= to_7seg(card_val);
+                END IF;
+                D_sum <= D_sum + card_val;
+                sum1 <= to_7seg(get_first_digit(D_sum + card_val));
+                sum2 <= to_7seg(get_second_digit(D_sum + card_val));
+                
+            WHEN SD_rec1 =>
+                turn <= to_7seg(17);
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(D_sum_digit1);
+                sum2 <= to_7seg(D_sum_digit2);
+                rec_card <= '1';
+                
+            WHEN SD_wait1 =>
+                rec_card <= '0';
+                D_cont <= D_cont + 1;
+                
+            WHEN SD_recieve1 =>
+                turn <= to_7seg(17);
+                jogada <= to_7seg(jogada_n);
+                card_val_display <= to_7seg(card_val);
+                IF card_val = 1 THEN
+                    card_val := 11;
+                    D_ace := TRUE;
+                END IF;
+
+                D_sum <= D_sum + card_val;
+
+                IF (D_sum + card_val) > 21 AND D_ace THEN
+                    D_sum <= (D_sum + card_val) - 10;
+                    D_ace := FALSE;
+                END IF;
+                sum1 <= to_7seg(get_first_digit(D_sum + card_val));
+                sum2 <= to_7seg(get_second_digit(D_sum + card_val));
+                
+            WHEN SD_result =>
+                turn <= to_7seg(17);
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(D_sum_digit1);
+                sum2 <= to_7seg(D_sum_digit2);
+
+            -- Estados de resultado
+            WHEN S_win =>
+                turn <= to_7seg(16);
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(P_sum_digit1);
+                sum2 <= to_7seg(P_sum_digit2);
+                win <= '1';
+
+            WHEN S_lose =>
+                turn <= to_7seg(19);  -- 'L'
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(D_sum_digit1);
+                sum2 <= to_7seg(D_sum_digit2);
+                lose <= '1';
+
+            WHEN S_draw =>
+                turn <= to_7seg(20);
+                jogada <= to_7seg(jogada_n);
+                sum1 <= to_7seg(P_sum_digit1);
+                sum2 <= to_7seg(P_sum_digit2);
+                tie <= '1';
+                
+            WHEN OTHERS =>
+                NULL;
+        END CASE;
+    END PROCESS;
+
+END ARCHITECTURE;
+
+LIBRARY IEEE;
+USE IEEE.std_logic_1164.ALL;
+USE IEEE.numeric_std.ALL;
+
+ENTITY cards IS
+    PORT (
+        clk             : IN  STD_LOGIC;
+        start           : IN  STD_LOGIC;
+        card_rec        : IN  STD_LOGIC;
+        random_number   : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+    );
+END ENTITY;
+
+ARCHITECTURE Behavioral OF cards IS
+    SIGNAL lfsr : STD_LOGIC_VECTOR(15 DOWNTO 0) := "1010110010100000";  
+BEGIN
+    PROCESS(clk)
+        VARIABLE rnd_int : INTEGER RANGE 1 TO 13;
+    BEGIN
+        IF rising_edge(clk) THEN
+            IF start = '1' THEN
+                lfsr <= "1110110010101110";
+            ELSIF card_rec = '1' THEN
+                lfsr <= lfsr(14 DOWNTO 0) & (lfsr(15) XOR lfsr(13) XOR lfsr(12) XOR lfsr(10));
+            END IF;
+
+            rnd_int := (to_integer(unsigned(lfsr)) MOD 10) + 1;
+            random_number <= std_logic_vector(to_unsigned(rnd_int, 4));
+        END IF;
+    END PROCESS;
+END ARCHITECTURE;

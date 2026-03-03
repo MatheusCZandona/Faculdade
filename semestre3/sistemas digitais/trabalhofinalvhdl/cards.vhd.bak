@@ -1,0 +1,31 @@
+LIBRARY IEEE;
+USE IEEE.std_logic_1164.ALL;
+USE IEEE.numeric_std.ALL;
+
+ENTITY cards IS
+    PORT (
+        clk             : IN  STD_LOGIC;
+        start           : IN  STD_LOGIC;
+        card_rec        : IN  STD_LOGIC;
+        random_number   : OUT STD_LOGIC_VECTOR(3 DOWNTO 0)
+    );
+END ENTITY;
+
+ARCHITECTURE Behavioral OF cards IS
+    SIGNAL lfsr : STD_LOGIC_VECTOR(15 DOWNTO 0) := "1010110010100000";  
+BEGIN
+    PROCESS(clk)
+        VARIABLE rnd_int : INTEGER RANGE 1 TO 13;
+    BEGIN
+        IF (clk'event AND clk = '0') THEN
+            IF start = '1' THEN
+                lfsr <= "1110110010101110";
+            ELSIF card_rec = '1' THEN
+                lfsr <= lfsr(14 DOWNTO 0) & (lfsr(15) XOR lfsr(13) XOR lfsr(12) XOR lfsr(10));
+            END IF;
+
+            rnd_int := (to_integer(unsigned(lfsr)) MOD 10) + 1;
+            random_number <= std_logic_vector(to_unsigned(rnd_int, 4));
+        END IF;
+    END PROCESS;
+END ARCHITECTURE;
