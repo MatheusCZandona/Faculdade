@@ -1,0 +1,134 @@
+-- ============================================================
+-- Tabela: Cliente
+-- ============================================================
+INSERT INTO Cliente (CPF, Nome, Data_cadastro) VALUES
+('12345678900', 'Ana Souza', '2024-01-10'),
+('23456789011', 'Bruno Lima', '2024-02-15'),
+('34567890122', 'Carla Mendes', '2024-03-05'),
+('45678901233', 'Daniel Ferreira', '2024-03-22'),
+('56789012344', 'Eduarda Campos', '2024-04-10'),
+('67890123455', 'Felipe Rocha', '2024-04-25'),
+('78901234566', 'Gabriela Nunes', '2024-05-12'),
+('89012345677', 'Henrique Alves', '2024-06-01'),
+('90123456788', 'Isabela Martins', '2024-06-20'),
+('01234567899', 'João Carvalho', '2024-07-03');
+
+-- ============================================================
+-- Tabela: Usuario
+-- ============================================================
+INSERT INTO Usuario (ID, Email, Senha, Funcao, Nome, Ativo, Desde, Usuario_TIPO) VALUES
+(1, 'maria@imob.com', '1234', 'Corretor', 'Maria Oliveira', 1, '2024-02-01', 1),
+(2, 'pedro@imob.com', 'abcd', 'Gerente', 'Pedro Santos', 1, '2024-02-03', 2),
+(3, 'roberta@imob.com', 'pass123', 'Corretor', 'Roberta Lima', 1, '2024-02-10', 1),
+(4, 'lucas@imob.com', 'senha456', 'Administrador', 'Lucas Pires', 1, '2024-02-15', 3),
+(5, 'carol@imob.com', 'casa@2024', 'Corretor', 'Carolina Braga', 1, '2024-02-20', 1),
+(6, 'rafael@imob.com', 'r123', 'Corretor', 'Rafael Duarte', 1, '2024-03-01', 1),
+(7, 'aline@imob.com', 'a2024', 'Gerente', 'Aline Castro', 1, '2024-03-10', 2),
+(8, 'gustavo@imob.com', 'imob2024', 'Corretor', 'Gustavo Lopes', 1, '2024-03-20', 1),
+(9, 'tania@imob.com', 't@123', 'Corretor', 'Tânia Moura', 1, '2024-03-25', 1),
+(10, 'eduardo@imob.com', 'e2024', 'Corretor', 'Eduardo Faria', 1, '2024-04-01', 1);
+
+-- ============================================================
+-- Tabela: Imovel
+-- ============================================================
+INSERT INTO Imovel (id, Valor, status, Area_construida, comodos, Bairro, Rua, Cep, Condominio, Andar, Torre, Quintal, Andares, Imovel_TIPO) VALUES
+(1, 450000, 'Disponível', 120, 6, 'Centro', 'Rua das Flores', '01010-010', 0, 0, 0, 1, 1, 1),
+(2, 780000, 'Vendido', 200, 8, 'Jardim América', 'Av. Paulista', '01311-000', 1, 5, 2, 0, 10, 2),
+(3, 320000, 'Disponível', 90, 5, 'Mooca', 'Rua Bresser', '03162-000', 0, 0, 0, 1, 1, 1),
+(4, 1250000, 'Em negociação', 250, 10, 'Morumbi', 'Rua do Bosque', '05610-050', 1, 12, 3, 0, 15, 3),
+(5, 980000, 'Disponível', 180, 7, 'Tatuapé', 'Rua Serra de Bragança', '03318-000', 1, 8, 1, 0, 12, 2),
+(6, 350000, 'Vendido', 85, 4, 'Ipiranga', 'Rua Bom Pastor', '04203-000', 0, 0, 0, 1, 1, 1),
+(7, 520000, 'Disponível', 110, 5, 'Vila Mariana', 'Rua Domingos de Morais', '04036-000', 1, 4, 1, 0, 8, 2),
+(8, 1500000, 'Disponível', 300, 12, 'Alphaville', 'Alameda das Hortênsias', '06455-000', 1, 15, 2, 1, 15, 3),
+(9, 410000, 'Vendido', 100, 5, 'Santo Amaro', 'Rua Laguna', '04728-000', 0, 0, 0, 1, 1, 1),
+(10, 270000, 'Disponível', 75, 3, 'Penha', 'Rua Padre Benedito', '03624-000', 0, 0, 0, 1, 1, 1);
+
+-- ============================================================
+-- Tabela: Contato
+-- ============================================================
+INSERT INTO Contato (Email, Numero, fk_Cliente_CPF) VALUES
+('ana@gmail.com', '11999990000', '12345678900'),
+('bruno@gmail.com', '11988881111', '23456789011'),
+('carla@gmail.com', '11977772222', '34567890122'),
+('daniel@gmail.com', '11966663333', '45678901233'),
+('eduarda@gmail.com', '11955554444', '56789012344'),
+('felipe@gmail.com', '11944445555', '67890123455'),
+('gabriela@gmail.com', '11933336666', '78901234566'),
+('henrique@gmail.com', '11922227777', '89012345677'),
+('isabela@gmail.com', '11911118888', '90123456788'),
+('joao@gmail.com', '11888889999', '01234567899');
+
+-- ============================================================
+-- Tabela: Fila_atendimento
+-- ============================================================
+INSERT INTO Fila_atendimento (ID, Etapa, fk_Cliente_CPF) VALUES
+(1, 'Contato inicial', '12345678900'),
+(2, 'Contato inicial', '23456789011'),
+(3, 'Visita agendada', '34567890122'),
+(4, 'Proposta enviada', '45678901233'),
+(5, 'Negociação', '56789012344'),
+(6, 'Contato inicial', '67890123455'),
+(7, 'Proposta aceita', '78901234566'),
+(8, 'Assinatura de contrato', '89012345677'),
+(9, 'Contato inicial', '90123456788'),
+(10, 'Proposta recusada', '01234567899');
+
+-- ============================================================
+-- Tabela: Gerencia_Cliente
+-- ============================================================
+INSERT INTO Gerencia_Cliente (fk_Usuario_ID, fk_Cliente_CPF) VALUES
+(1, '12345678900'),
+(1, '23456789011'),
+(2, '34567890122'),
+(2, '45678901233'),
+(3, '56789012344'),
+(4, '67890123455'),
+(5, '78901234566'),
+(6, '89012345677'),
+(7, '90123456788'),
+(8, '01234567899');
+
+-- ============================================================
+-- Tabela: Gerencia_Imovel
+-- ============================================================
+INSERT INTO Gerencia_Imovel (fk_Usuario_ID, fk_Imovel_id) VALUES
+(1, 1),
+(2, 2),
+(3, 3),
+(4, 4),
+(5, 5),
+(6, 6),
+(7, 7),
+(8, 8),
+(9, 9),
+(10, 10);
+
+-- ============================================================
+-- Tabela: Cadastra
+-- ============================================================
+INSERT INTO Cadastra (fk_Usuario_ID, fk_Usuario_ID_) VALUES
+(1, 2),
+(2, 3),
+(3, 4),
+(4, 5),
+(5, 6),
+(6, 7),
+(7, 8),
+(8, 9),
+(9, 10),
+(10, 1);
+
+-- ============================================================
+-- Tabela: Proposta
+-- ============================================================
+INSERT INTO Proposta (ID, fk_Cliente_CPF, fk_Imovel_id, Data, Valor, Status_proposta) VALUES
+(1,'12345678900', 1, '2024-07-10', 440000, 'Aceita'),
+(2,'23456789011', 2, '2024-07-11', 770000, 'Aceita'),
+(3,'34567890122', 3, '2024-07-15', 310000, 'Pendente'),
+(4,'45678901233', 4, '2024-07-18', 1200000, 'Recusada'),
+(5,'56789012344', 5, '2024-07-19', 950000, 'Aceita'),
+(6,'67890123455', 6, '2024-07-20', 340000, 'Recusada'),
+(7,'78901234566', 7, '2024-07-22', 500000, 'Aceita'),
+(8,'89012345677', 8, '2024-07-23', 1450000, 'Pendente'),
+(9,'90123456788', 9, '2024-07-24', 400000, 'Aceita'),
+(10,'01234567899', 10, '2024-07-25', 260000, 'Pendente');

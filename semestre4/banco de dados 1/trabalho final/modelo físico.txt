@@ -1,0 +1,119 @@
+CREATE TABLE Cliente (
+    CPF VARCHAR PRIMARY KEY,
+    Nome VARCHAR,
+    Data_cadastro DATE
+);
+
+CREATE TABLE Imovel (
+    id INT PRIMARY KEY,
+    Valor FLOAT,
+    status VARCHAR,
+    Area_construida FLOAT,
+    comodos INT,
+    Bairro VARCHAR,
+    Rua VARCHAR,
+    Cep VARCHAR,
+    Condominio INT,
+    Andar INT,
+    Torre INT,
+    Quintal INT,
+    Andares INT,
+    Imovel_TIPO INT
+);
+
+CREATE TABLE Contato (
+    Email VARCHAR PRIMARY KEY,
+    Numero VARCHAR,
+    fk_Cliente_CPF VARCHAR
+);
+
+CREATE TABLE Fila_atendimento (
+    ID INT PRIMARY KEY,
+    Etapa VARCHAR,
+    fk_Cliente_CPF VARCHAR
+);
+
+CREATE TABLE Usuario (
+    ID INT PRIMARY KEY,
+    Email VARCHAR,
+    Senha VARCHAR,
+    Funcao VARCHAR,
+    Nome VARCHAR,
+    Ativo INT,
+    Desde DATE,
+    Usuario_TIPO INT
+);
+
+CREATE TABLE Gerencia_Cliente (
+    fk_Usuario_ID INT,
+    fk_Cliente_CPF VARCHAR
+);
+
+CREATE TABLE Gerencia_Imovel (
+    fk_Usuario_ID INT,
+    fk_Imovel_id INT
+);
+
+CREATE TABLE Proposta (
+    ID INT PRIMARY KEY,
+    fk_Cliente_CPF VARCHAR,
+    fk_Imovel_id INT,
+    Data DATE,
+    Valor FLOAT,
+    Status_proposta VARCHAR
+);
+
+CREATE TABLE Cadastra (
+    fk_Usuario_ID INT,
+    fk_Usuario_ID_ INT
+);
+ 
+ALTER TABLE Contato ADD CONSTRAINT FK_Contato_2
+    FOREIGN KEY (fk_Cliente_CPF)
+    REFERENCES Cliente (CPF)
+    ON DELETE RESTRICT;
+ 
+ALTER TABLE Fila_atendimento ADD CONSTRAINT FK_Fila_atendimento_2
+    FOREIGN KEY (fk_Cliente_CPF)
+    REFERENCES Cliente (CPF)
+    ON DELETE RESTRICT;
+ 
+ALTER TABLE Gerencia_Cliente ADD CONSTRAINT FK_Gerencia_Cliente_1
+    FOREIGN KEY (fk_Usuario_ID)
+    REFERENCES Usuario (ID)
+    ON DELETE RESTRICT;
+ 
+ALTER TABLE Gerencia_Cliente ADD CONSTRAINT FK_Gerencia_Cliente_2
+    FOREIGN KEY (fk_Cliente_CPF)
+    REFERENCES Cliente (CPF)
+    ON DELETE SET NULL;
+ 
+ALTER TABLE Gerencia_Imovel ADD CONSTRAINT FK_Gerencia_Imovel_1
+    FOREIGN KEY (fk_Usuario_ID)
+    REFERENCES Usuario (ID)
+    ON DELETE RESTRICT;
+ 
+ALTER TABLE Gerencia_Imovel ADD CONSTRAINT FK_Gerencia_Imovel_2
+    FOREIGN KEY (fk_Imovel_id)
+    REFERENCES Imovel (id)
+    ON DELETE SET NULL;
+ 
+ALTER TABLE Proposta ADD CONSTRAINT FK_Proposta_1
+    FOREIGN KEY (fk_Cliente_CPF)
+    REFERENCES Cliente (CPF)
+    ON DELETE RESTRICT;
+ 
+ALTER TABLE Proposta ADD CONSTRAINT FK_Proposta_2
+    FOREIGN KEY (fk_Imovel_id)
+    REFERENCES Imovel (id)
+    ON DELETE SET NULL;
+ 
+ALTER TABLE Cadastra ADD CONSTRAINT FK_Cadastra_1
+    FOREIGN KEY (fk_Usuario_ID_)
+    REFERENCES Usuario (ID)
+    ON DELETE SET NULL;
+ 
+ALTER TABLE Cadastra ADD CONSTRAINT FK_Cadastra_2
+    FOREIGN KEY (fk_Usuario_ID)
+    REFERENCES Usuario (ID)
+    ON DELETE SET NULL;
