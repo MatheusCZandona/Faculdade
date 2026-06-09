@@ -1,0 +1,1 @@
+Os trabalhos práticos da disciplina estão no repositório uufsdb forkado no meu github.

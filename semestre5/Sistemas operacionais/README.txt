@@ -1,0 +1,1 @@
+O trabalho foi modifical o escalonador do sistema operacional XV6. O trabalho está em um repositório separado no meu github.
