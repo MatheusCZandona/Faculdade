@@ -7,6 +7,8 @@ class Automato:
         self.finais = set()
         self.transicoes = {}
         self.inicial = 0
+        self.inalcancaveis = set()
+        self.mortos = set()
 
     def carregar_palavras(self, nome_arquivo):
 
@@ -26,21 +28,21 @@ class Automato:
 
     def construir_automato(self):
 
-        self.estados.add(self.inicial) # Adiciona o estado inicial ao conjunto de estados
+        self.estados.add(self.inicial) #adiciona o estado inicial aos estados
 
         for palavra in self.palavras:
-            estado_atual = self.inicial # Começa no estado inicial para cada palavra
+            estado_atual = self.inicial # começa no estado inicial
 
             for letra in palavra:
-                proximo_estado = (estado_atual, letra) # Define a transição para o próximo estado com base no estado atual e na letra
+                proximo_estado = (estado_atual, letra) # transição para o próximo estado pela letra
 
-                if proximo_estado not in self.transicoes: # Se a transição ainda não existe, cria um novo estado para ela
-                    self.transicoes[proximo_estado] = len(self.estados) # Atribui um novo número de estado para a transição e adiciona ao conjunto de estados
-                    self.estados.add(len(self.estados)) # Adiciona o novo estado ao conjunto de estados
+                if proximo_estado not in self.transicoes: # cria um novo estado se a transição não existe
+                    self.transicoes[proximo_estado] = len(self.estados) # cria novo estado
+                    self.estados.add(len(self.estados)) # adiciona novo estado ao conjunto de estados
 
-                estado_atual = self.transicoes[proximo_estado] # Move para o próximo estado com base na transição definida
+                estado_atual = self.transicoes[proximo_estado] # vai para o próximo estado
 
-            self.finais.add(estado_atual)
+            self.finais.add(estado_atual) #adiciona estado atual aos estados finais
 
     def printar_automato(self):
         print("Palavras:", self.palavras)
@@ -48,6 +50,10 @@ class Automato:
         print("Estados:", self.estados)
         print("Estado Inicial:", self.inicial)
         print("Estados Finais:", self.finais)
+        print("Transições:", self.transicoes)
+        for transicao, estado in self.transicoes.items():
+            print(f"Transição: {transicao} -> Estado: {estado}")
+
         print("tabela de transições:")
         print("   ", end="")
         for letra in self.alfabeto:
@@ -72,8 +78,61 @@ class Automato:
         pass
 
     def minimizar(self):
-        pass
+        conjunto_transicoes = [set() for _ in range(len(self.estados))]
+        for (origem, simbolo), destino in self.transicoes.items():
+            conjunto_transicoes[origem].add(destino) #adiciona transições diretas
 
+        mudou = True
+        while mudou: #adiciona as transicoes indiretas enquanto tiver mudanças
+            mudou = False
+            for estado in range(len(conjunto_transicoes)):
+                novos = set()
+
+                for alcancado in conjunto_transicoes[estado]:
+                    novos |= conjunto_transicoes[alcancado]
+
+                tamanho_antigo = len(conjunto_transicoes[estado])
+                conjunto_transicoes[estado] |= novos
+                if len(conjunto_transicoes[estado]) > tamanho_antigo:
+                    mudou = True
+        
+        #achar estados inalcançáveis
+        inalcancaveis = set()
+        for estado in self.estados:
+            if estado == self.inicial:
+                continue
+            if estado not in conjunto_transicoes[self.inicial]:
+                inalcancaveis.add(estado)
+
+        #achar estados mortos
+        mortos = set()
+        for estado in self.estados:
+            alcança_final = False
+
+            if estado in self.finais:
+                alcança_final = True
+            else:
+                for final in self.finais:
+                    if final in conjunto_transicoes[estado]:
+                        alcança_final = True
+                        break
+
+            if not alcança_final:
+                mortos.add(estado)
+
+        #remover estados mortos e inalcançáveis
+        remover = mortos | inalcancaveis
+        self.estados -= remover
+        self.finais -= remover
+        
+        #remover estados mortos e inalcancaveis das transições
+        for chave in list(self.transicoes.keys()):
+            origem, simbolo = chave
+            destino = self.transicoes[chave]
+
+            if origem in remover or destino in remover:
+                del self.transicoes[chave]
+        
     def estado_de_erro(self):
         pass
 
