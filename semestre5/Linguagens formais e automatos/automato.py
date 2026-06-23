@@ -57,7 +57,7 @@ class Automato:
                     if esquerda.startswith("<") and esquerda.endswith(">"):
                         esquerda = esquerda[1:-1]
 
-                    producoes = []
+                    producoes = [] #sao armazenadas producoes no formato "a<Y>" ou "b<Z>" ou "ε"
 
                     for producao in direita.split("|"):
                         producao = producao.strip()
@@ -135,20 +135,21 @@ class Automato:
     def determinizar(self):
         novos_estados = {}
         prox_estado = self._novo_estado
-
+        # algoritmo de determinização: enquanto houver estados com mais de um destino,
+        # cria um novo estado para o conjunto de destinos
         mudou = True
         while mudou:
             mudou = False
 
             for chave in list(self.transicoes.keys()):
                 destinos = self.transicoes[chave]
-                if len(destinos) <= 1:
+                if len(destinos) <= 1: #ignora estados ja determinizados
                     continue
 
                 conjunto = frozenset(destinos)
-                if conjunto not in novos_estados:
+                if conjunto not in novos_estados: #se o conjunto de destinos ainda não foi mapeado para um novo estado, cria um novo estado
                     novo = prox_estado()
-                    novos_estados[conjunto] = novo
+                    novos_estados[conjunto] = novo # {C,K} = L
 
                     # calcular transições do novo estado
                     for simbolo in self.alfabeto:
@@ -156,14 +157,14 @@ class Automato:
                         for estado in conjunto:
                             uniao |= self.transicoes.get((estado, simbolo), set())
 
-                        if uniao:
+                        if uniao: #se houver destinos para este símbolo, cria a transição do novo estado para o conjunto de destinos
                             self.transicoes[(novo, simbolo)] = uniao
 
                     # estado final?
                     if conjunto & self.finais:
                         self.finais.add(novo)
 
-                self.transicoes[chave] = {novos_estados[conjunto]}
+                self.transicoes[chave] = {novos_estados[conjunto]} # atualiza a transição para apontar para o novo estado determinizado
                 mudou = True
 
     def minimizar(self):
@@ -292,6 +293,7 @@ automato.construir_automato_palavras()
 automato.construir_automato_gramatica_regular()
 automato.printar_automato()
 automato.determinizar()
+automato.printar_automato()
 automato.minimizar()
 automato.adicionar_estado_de_erro()
 automato.printar_automato()
