@@ -3,10 +3,12 @@ import sys
 
 
 class AutomatoeLexer:
+
     # Caracteres tratados como separadores de tokens (nunca fazem parte do alfabeto)
     SEPARADORES = {" ", "\t", "\n", "\r"}
 
     def __init__(self):
+
         self.palavras = []
         self.alfabeto = set()
         self.estados = set()
@@ -19,11 +21,11 @@ class AutomatoeLexer:
         self.gramatica = {}
         self._gerador_nomes = self._criar_gerador_nomes()
 
-        # entrada do reconhecedor: as próprias linhas de tokens do arquivo do
-        # autômato, como (numero_da_linha, texto)
+        # Entrada do reconhecedor: texto do arquivo que será reconhecido,
+        # armazenado como (numero_da_linha, texto).
         self.entrada = []
 
-        # saídas do reconhecedor
+        # Saídas do reconhecedor
         self.fita = []               # ["E1", "E2", ..., "$"]
         self.tabela_simbolos = []    # [(linha, identificador, rotulo), ...]
 
@@ -47,6 +49,7 @@ class AutomatoeLexer:
     # ------------------------------------------------------------------
     # Construção do AFD (código original, com pequenos ajustes)
     # ------------------------------------------------------------------
+
     @staticmethod
     def _analisar_producao(producao):
         # Separa uma produção em (terminal, não-terminal destino).
@@ -60,8 +63,10 @@ class AutomatoeLexer:
 
         if resto == "":
             return simbolo, None
+
         if resto.startswith("<") and resto.endswith(">"):
             resto = resto[1:-1]
+
         return simbolo, resto
 
     def carregar_palavras_e_gr(self, nome_arquivo):
@@ -71,14 +76,15 @@ class AutomatoeLexer:
         with open(nome_arquivo, "r", encoding="utf-8") as arquivo:
             for numero_linha, linha in enumerate(arquivo, start=1):
                 linha = linha.strip()
+
                 if linha == "":
                     lendo_gramatica = True
                     continue
 
                 if not lendo_gramatica:
-                    # palavras reservadas
+                    # Palavras reservadas
                     self.palavras.append(linha)
-                    self.entrada.append((numero_linha, linha))
+
                     for letra in linha:
                         self.alfabeto.add(letra)
 
@@ -103,6 +109,14 @@ class AutomatoeLexer:
 
                     self.gramatica[esquerda] = producoes
 
+    def carregar_entrada(self, nome_arquivo):
+        # Carrega separadamente o arquivo que será reconhecido pelo lexer.
+        self.entrada = []
+
+        with open(nome_arquivo, "r", encoding="utf-8") as arquivo:
+            for numero_linha, linha in enumerate(arquivo, start=1):
+                self.entrada.append((numero_linha, linha))
+
     def construir_automato_palavras(self):
         self.estados.add(self.inicial)
 
@@ -125,6 +139,7 @@ class AutomatoeLexer:
             return
 
         mapa_nao_terminal = {}
+
         for nao_terminal in self.gramatica:
             if nao_terminal == "S":
                 mapa_nao_terminal[nao_terminal] = self.inicial
@@ -158,21 +173,25 @@ class AutomatoeLexer:
         novos_estados = {}
         prox_estado = self._novo_estado
         mudou = True
+
         while mudou:
             mudou = False
 
             for chave in list(self.transicoes.keys()):
                 destinos = self.transicoes[chave]
+
                 if len(destinos) <= 1:
                     continue
 
                 conjunto = frozenset(destinos)
+
                 if conjunto not in novos_estados:
                     novo = prox_estado()
                     novos_estados[conjunto] = novo
 
                     for simbolo in self.alfabeto:
                         uniao = set()
+
                         for estado in conjunto:
                             uniao |= self.transicoes.get((estado, simbolo), set())
 
@@ -193,8 +212,10 @@ class AutomatoeLexer:
                 conjunto_transicoes[origem] |= destinos
 
         mudou = True
+
         while mudou:
             mudou = False
+
             for estado in list(self.estados):
                 novos = set()
 
@@ -204,17 +225,21 @@ class AutomatoeLexer:
 
                 tamanho_antigo = len(conjunto_transicoes[estado])
                 conjunto_transicoes[estado] |= novos
+
                 if len(conjunto_transicoes[estado]) > tamanho_antigo:
                     mudou = True
 
         inalcancaveis = set()
+
         for estado in self.estados:
             if estado == self.inicial:
                 continue
+
             if estado not in conjunto_transicoes[self.inicial]:
                 inalcancaveis.add(estado)
 
         mortos = set()
+
         for estado in self.estados:
             alcanca_final = False
 
@@ -230,6 +255,7 @@ class AutomatoeLexer:
                 mortos.add(estado)
 
         remover = mortos | inalcancaveis
+
         self.estados -= remover
         self.finais -= remover
 
@@ -253,46 +279,67 @@ class AutomatoeLexer:
     # ------------------------------------------------------------------
     # Reconhecimento léxico (FITA + Tabela de Símbolos)
     # ------------------------------------------------------------------
+
+    # verifica o estado atual e o símbolo lido e pega o destino da transição
+    # ex: [S,f] -> {A}: está no estado S, lê f e vai para A
     def _proximo_estado(self, estado, simbolo):
-        # AF[EstadoCorrente, Símbolo]. Símbolo fora do alfabeto (ou sem
+        # AF[EstadoCorrente, Simbolo]. Simbolo fora do alfabeto (ou sem
         # transição) leva ao estado de erro.
         destinos = self.transicoes.get((estado, simbolo))
+
         if not destinos:
             return self.erro
-        return next(iter(destinos))  # AFD: só há um destino
+
+        return next(iter(destinos))
 
     @staticmethod
-    def _nome_simbolo(simbolo):
+    def _nome_simbolo(simbolo):  # apenas para deixar mais legível
         # Nome legível do caractere, para a impressão do passo a passo.
-        nomes = {" ": "<espaço>", "\t": "<tab>", "\n": "<fim da linha>", "\r": "<retorno>"}
+        nomes = {
+            " ": "<espaço>",
+            "\t": "<tab>",
+            "\n": "<fim da linha>",
+            "\r": "<retorno>",
+        }
         return nomes.get(simbolo, f"'{simbolo}'")
 
+    # encontrei um separador, agora verifica o estado que o AFD parou e registra o token
+    # se o estado em que parou não for final, o estado vira estado de erro
     def _registrar_token(self, estado, rotulo, linha, passo_a_passo=False):
         estado_ao_parar = estado
+
         # 6: se estado não final, EstadoCorrente = X
         if estado not in self.finais:
             estado = self.erro
+
         # 7: add FITA(EstadoCorrente)
         self.fita.append(estado)
+
         # 8: add TS(linha, EstadoCorrente, label)
         self.tabela_simbolos.append((linha, estado, rotulo))
 
         if passo_a_passo:
             eh_final = estado_ao_parar in self.finais
-            print(f"  passo 6: o token parou em {estado_ao_parar}, que "
-                  f"{'é final -> mantém ' + estado if eh_final else 'NÃO é final -> vira ' + estado}")
+
+            print(
+                f"  passo 6: o token parou em {estado_ao_parar}, que "
+                f"{'é final -> mantém ' + estado if eh_final else 'NÃO é final -> vira ' + estado}"
+            )
             print(f"  passo 7: adiciona {estado} na FITA")
-            print(f"  passo 8: adiciona ({linha}, {estado}, {rotulo}) na Tabela de Símbolos")
+            print(
+                f"  passo 8: adiciona ({linha}, {estado}, {rotulo}) na Tabela de Símbolos"
+            )
             print(f"  passo 9: volta para {self.inicial}")
             print(f"  >> FITA até agora: {' '.join(self.fita)}")
             print("  >> Tabela de Símbolos até agora:")
             print(f"     {'LINHA':<8}{'IDENTIFICADOR':<16}RÓTULO")
+
             for l, ident, rot in self.tabela_simbolos:
                 print(f"     {l:<8}{ident:<16}{rot}")
 
     def reconhecer(self, passo_a_passo=False):
-        # A entrada é a que já foi lida pelo autômato (self.entrada): cada
-        # linha de token do arquivo, com o seu número de linha.
+        # A entrada do reconhecedor é carregada separadamente em self.entrada
+        # pelo método carregar_entrada(). Cada item é (numero_da_linha, texto).
         self.fita = []
         self.tabela_simbolos = []
 
@@ -301,38 +348,47 @@ class AutomatoeLexer:
 
         for numero_linha, linha in self.entrada:
             estado_corrente = self.inicial  # 1: EstadoCorrente = S
-            rotulo = ""                     # lexema sendo lido
+            rotulo = ""
 
             if passo_a_passo:
-                print(f"\n--- Linha {numero_linha}: \"{linha}\" ---")
+                print(f'\n--- Linha {numero_linha}: "{linha}" ---')
                 print(f"  passo 1: EstadoCorrente = {estado_corrente}")
 
             # O "\n" no final funciona como separador sentinela: garante que o
             # último token da linha seja fechado mesmo sem espaço depois dele.
+            # Se é separador registra o token, senão vai construindo.
             for simbolo in linha.rstrip("\r\n") + "\n":  # 2: Ler(Símbolo)
-                if simbolo in self.SEPARADORES:          # 3: é separador -> vai para 6
+                if simbolo in self.SEPARADORES:  # 3: e separador -> vai para 6
                     if rotulo == "":
                         continue  # separadores repetidos, nada a registrar
 
                     if passo_a_passo:
-                        print(f"  passo 2: lê {self._nome_simbolo(simbolo)} -> é separador, "
-                              f"o token \"{rotulo}\" terminou")
+                        print(
+                            f"  passo 2: lê {self._nome_simbolo(simbolo)} -> é separador, "
+                            f"o token \"{rotulo}\" terminou"
+                        )
 
-                    self._registrar_token(estado_corrente, rotulo, numero_linha, passo_a_passo)  # 6, 7, 8
+                    self._registrar_token(
+                        estado_corrente, rotulo, numero_linha, passo_a_passo
+                    )  # 6, 7, 8
 
                     estado_corrente = self.inicial  # 9: volta para 1
                     rotulo = ""
+
                 else:
                     # 4: EstadoCorrente = AF[EstadoCorrente, Símbolo]
                     anterior = estado_corrente
                     estado_corrente = self._proximo_estado(estado_corrente, simbolo)
                     rotulo += simbolo
+
                     # 5: vai para 2 (próxima iteração)
-
                     if passo_a_passo:
-                        print(f"  passo 2: lê '{simbolo}' -> AF[{anterior}, {simbolo}] = "
-                              f"{estado_corrente}    rótulo = \"{rotulo}\"")
+                        print(
+                            f"  passo 2: lê '{simbolo}' -> AF[{anterior}, {simbolo}] = "
+                            f"{estado_corrente}    rótulo = \"{rotulo}\""
+                        )
 
+        # Marca o fim da fita.
         self.fita.append("$")
 
         if passo_a_passo:
@@ -343,12 +399,14 @@ class AutomatoeLexer:
     # ------------------------------------------------------------------
     # Saídas
     # ------------------------------------------------------------------
+
     def imprimir_fita(self):
         print("FITA:", " ".join(self.fita))
 
     def imprimir_tabela_simbolos(self):
         print("Tabela de Símbolos:")
         print(f"{'LINHA':<8}{'IDENTIFICADOR':<16}RÓTULO")
+
         for linha, identificador, rotulo in self.tabela_simbolos:
             print(f"{linha:<8}{identificador:<16}{rotulo}")
 
@@ -358,11 +416,15 @@ class AutomatoeLexer:
 
         with open(arquivo_ts, "w", encoding="utf-8") as f:
             f.write(f"{'LINHA':<8}{'IDENTIFICADOR':<16}RÓTULO\n")
+
             for linha, identificador, rotulo in self.tabela_simbolos:
                 f.write(f"{linha:<8}{identificador:<16}{rotulo}\n")
 
     def _estados_ordenados(self):
-        resto = sorted(self.estados - {self.inicial}, key=lambda e: (len(e), e))
+        resto = sorted(
+            self.estados - {self.inicial},
+            key=lambda e: (len(e), e)
+        )
         return [self.inicial] + resto
 
     def printar_automato(self):
@@ -374,13 +436,16 @@ class AutomatoeLexer:
         print("Estado Inicial:", self.inicial)
         print("Estados Finais:", self.finais)
         print("Transições:", self.transicoes)
+
         for transicao, estado in self.transicoes.items():
             print(f"Transição: {transicao} -> Estado: {estado}")
 
         print("tabela de transições:")
         print("   ", end="")
+
         for letra in sorted(self.alfabeto):
             print(f"   {letra}", end="")
+
         print()
 
         for estado in estados_ordenados:
@@ -391,32 +456,46 @@ class AutomatoeLexer:
 
             for letra in sorted(self.alfabeto):
                 proximo_estado = self.transicoes.get((estado, letra), None)
+
                 if proximo_estado is not None:
                     if isinstance(proximo_estado, set):
-                        proximo_estado = "{" + ",".join(str(e) for e in sorted(proximo_estado)) + "}"
+                        proximo_estado = "{" + ",".join(
+                            str(e) for e in sorted(proximo_estado)
+                        ) + "}"
+
                     print(f" {proximo_estado:>3}", end="")
                 else:
                     print("   -", end="")
+
             print()
 
 
 if __name__ == "__main__":
-    # uso: python analisador_lexico.py [tokens.txt]
-    arquivo_tokens = sys.argv[1] if len(sys.argv) > 1 else "tokens.txt"
+
+    arquivo_tokens = "tokens.txt"
+    arquivo_lexico = "entrada.txt"
 
     automato = AutomatoeLexer()
+
+    # 1. Carrega os tokens e a gramática
     automato.carregar_palavras_e_gr(arquivo_tokens)
+
+    # 2. Constrói o AFD
     automato.construir_automato_palavras()
     automato.construir_automato_gramatica_regular()
-    automato.printar_automato()
     automato.determinizar()
-    automato.printar_automato()
     automato.minimizar()
     automato.adicionar_estado_de_erro()
-    automato.printar_automato()
 
-    # reconhecimento léxico sobre a entrada já carregada
+    # 3. Carrega a entrada que será reconhecida
+    automato.carregar_entrada(arquivo_lexico)
+
+    # 4. Executa o reconhecedor
     automato.reconhecer(passo_a_passo=True)
+
+    # 5. Mostra as saídas
     automato.imprimir_fita()
     automato.imprimir_tabela_simbolos()
+
+    # 6. Salva em arquivos
     automato.salvar_saidas()

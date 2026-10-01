@@ -1,0 +1,5 @@
+LINHA   IDENTIFICADOR   RÓTULO
+1       B               se
+2       G               entao
+3       J               senao
+4       X               jorge
